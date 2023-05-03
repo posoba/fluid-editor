@@ -243,5 +243,31 @@ export class Fluid {
         window.addEventListener("mouseup", () => {
             mouseSplat.down = false;
         });
+
+        canvas.addEventListener(
+            "touchmove",
+            e => {
+                e.preventDefault();
+                mouseSplat.moved = mouseSplat.down;
+                mouseSplat.dx = (e.targetTouches[0].pageX - mouseSplat.x) * 10.0;
+                mouseSplat.dy = (e.targetTouches[0].pageY - mouseSplat.y) * 10.0;
+                mouseSplat.x = e.targetTouches[0].pageX;
+                mouseSplat.y = e.targetTouches[0].pageY;
+            },
+            false,
+        );
+
+        canvas.addEventListener("touchstart", e => {
+            e.preventDefault();
+
+            mouseSplat.down = true;
+            mouseSplat.x = e.targetTouches[0].pageX;
+            mouseSplat.y = e.targetTouches[0].pageY;
+            mouseSplat.color = [Math.random() + 0.2, Math.random() + 0.2, Math.random() + 0.2];
+        });
+
+        window.addEventListener("touchend", () => {
+            mouseSplat.down = false;
+        });
     }
 }

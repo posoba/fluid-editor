@@ -1,6 +1,11 @@
+
 # Fluid Editor
 
 Application to generate webgl fluid animation.
+
+## Demo
+
+https://posoba.github.io/fluid/
 
 
 ### How to run
@@ -14,4 +19,6 @@ Application to generate webgl fluid animation.
 ## Author
 
 - [@piotrosoba](https://www.github.com/posoba)
+
+
 
