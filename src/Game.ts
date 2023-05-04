@@ -12,6 +12,7 @@ export class Game {
     private splats: ISplat[];
     private splatsCounter: number;
     private resetCounter: number;
+    private resetBeforeNextEmit: boolean;
 
     private emitTime: number;
     private waitTime: number;
@@ -23,13 +24,32 @@ export class Game {
         this.splats = [];
         this.splatsCounter = 0;
         this.resetCounter = 0;
+        this.resetBeforeNextEmit = false;
 
         this.tweenRunner = new TweenRunner();
         this.fluid = new Fluid(this);
         this.gui = this.makeGUI();
 
+        const startSplat1 = this.fluid.makeSplat();
+        startSplat1.x = Math.round(0.2 * window.innerWidth);
+        startSplat1.y = Math.round(0.9 * window.innerHeight);
+        startSplat1.dx = 150;
+        startSplat1.dy = -150;
+        startSplat1.color = [1, 0, 0];
+        this.splats.push(startSplat1);
+        this.addSplatFolder(startSplat1);
+
+        const startSplat2 = this.fluid.makeSplat();
+        startSplat2.x = Math.round(0.8 * window.innerWidth);
+        startSplat2.y = startSplat1.y;
+        startSplat2.dx = -startSplat1.dx;
+        startSplat2.dy = startSplat1.dy;
+        startSplat2.color = [0, 1, 0];
+        this.splats.push(startSplat2);
+        this.addSplatFolder(startSplat2);
+
+        this.reset();
         this.update();
-        this.addSplat();
     }
 
     private addSplat(): ISplat {
@@ -51,8 +71,8 @@ export class Game {
         const folder = this.gui.addFolder("Splat " + this.splatsCounter);
         folder.add(splat, "x");
         folder.add(splat, "y");
-        folder.add(splat, "dx", -200, 200);
-        folder.add(splat, "dy", -200, 200);
+        folder.add(splat, "dx", -300, 300);
+        folder.add(splat, "dy", -300, 300);
         folder.add(splat, "emitTime", 0, 1);
         folder.addColor(splat, "color", 1);
 
@@ -74,6 +94,9 @@ export class Game {
     };
 
     private async runSplats(): Promise<void> {
+        if (this.resetBeforeNextEmit) {
+            this.reset();
+        }
         const currentResetCounter = this.resetCounter;
         await this.fluid.emitSplats(this.splats, this.emitTime, this.waitTime);
         if (currentResetCounter === this.resetCounter) {
@@ -103,6 +126,7 @@ export class Game {
         gui.add(config, "splatRadius", 0.0001, 0.02);
         gui.add(this, "emitTime", 0, 5000);
         gui.add(this, "waitTime", 0, 5000);
+        gui.add(this, "resetBeforeNextEmit");
         gui.add(this, "reset");
         gui.add(this, "addSplat");
         gui.add(this, "save");
@@ -114,6 +138,9 @@ export class Game {
         const data = {
             config: this.fluid.config,
             splats: this.splats,
+            emitTime: this.emitTime,
+            waitTime: this.waitTime,
+            resetBeforeNextEmit: this.resetBeforeNextEmit,
         };
 
         const anchor = document.createElement("a");
@@ -137,6 +164,11 @@ export class Game {
                     const data = JSON.parse(json);
                     this.splats = data.splats;
                     Object.assign(this.fluid.config, data.config);
+                    this.emitTime = data.emitTime;
+                    this.waitTime = data.waitTime;
+                    this.resetCounter = 0;
+                    this.splatsCounter = 0;
+                    this.resetBeforeNextEmit = data.resetBeforeNextEmit;
                     this.gui.destroy();
                     this.gui = this.makeGUI();
                     this.splats.forEach(splat => this.addSplatFolder(splat));

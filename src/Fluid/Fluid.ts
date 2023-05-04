@@ -31,11 +31,11 @@ interface IFluidConfig {
 
 const defaultConfig: IFluidConfig = {
     densityDissipation: 0.98,
-    velocityDissipation: 0.99,
+    velocityDissipation: 0.98,
     pressureDissipation: 0.8,
     pressureIterations: 25,
     curl: 30,
-    splatRadius: 0.0015,
+    splatRadius: 0.003,
 };
 
 export class Fluid {
