@@ -161,7 +161,7 @@ export class Game {
             label: "Performance",
             lineCount: 2,
             min: 0,
-            max: 200,
+            max: 130,
         }) as EssentialsPlugin.FpsGraphBladeApi;
         settings.addInput(config, "densityDissipation", { min: 0.9, max: 1, label: "Dissipation" });
         settings.addInput(config, "velocityDissipation", { min: 0.9, max: 1, label: "Velocity" });
