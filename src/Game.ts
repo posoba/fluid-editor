@@ -103,7 +103,7 @@ export class Game {
                 splat.dx = settings.Strength.x;
                 splat.dy = settings.Strength.y;
             });
-        folder.addInput(splat, "emitTime", { min: 0, max: 1, title: "Emit time" });
+        folder.addInput(splat, "emitRange", { min: 0, max: 1, label: "Emit range" });
         folder.addInput(settings, "Color", { view: "color" }).on("change", () => {
             splat.color[0] = settings.Color.r / 255;
             splat.color[1] = settings.Color.g / 255;

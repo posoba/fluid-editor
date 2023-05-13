@@ -16,7 +16,7 @@ export interface ISplat {
     dy: number;
     moved: boolean;
     down: boolean;
-    emitTime: number;
+    emitRange: { min: number; max: number };
     color: [r: number, g: number, b: number];
 }
 
@@ -79,7 +79,7 @@ export class Fluid {
 
         await this.game.tweenRunner.create(emitTime, (progress: number) => {
             splats.forEach(splat => {
-                if (progress < splat.emitTime) {
+                if (progress > splat.emitRange.min && progress < splat.emitRange.max) {
                     splat.moved = true;
                 }
             });
@@ -93,7 +93,7 @@ export class Fluid {
             y: 0,
             dx: 0,
             dy: 0,
-            emitTime: 1,
+            emitRange: { min: 0, max: 1 },
             moved: false,
             down: false,
             color: [0, 0, 0],
