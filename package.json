@@ -23,6 +23,8 @@
     "webpack-glsl-minify": "^1.5.0"
   },
   "dependencies": {
-    "lil-gui": "^0.18.1"
+    "@tweakpane/core": "^1.1.8",
+    "@tweakpane/plugin-essentials": "^0.1.8",
+    "tweakpane": "^3.1.9"
   }
 }

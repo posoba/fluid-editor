@@ -1,30 +1,37 @@
-import GUI from "lil-gui";
+import { Pane } from "tweakpane";
+import * as EssentialsPlugin from "@tweakpane/plugin-essentials";
 
 import { TweenRunner } from "./Tween";
 import { Fluid, type ISplat } from "./Fluid";
 
 export class Game {
     public readonly tweenRunner: TweenRunner;
-    public gui: GUI;
+    public gui: Pane;
     public readonly fluid: Fluid;
 
+    private fpsGraph!: EssentialsPlugin.FpsGraphBladeApi;
     private lastTime: number;
     private splats: ISplat[];
     private splatsCounter: number;
     private resetCounter: number;
-    private resetBeforeNextEmit: boolean;
-
-    private emitTime: number;
-    private waitTime: number;
+    private config: {
+        emitTime: number;
+        waitTime: number;
+        resetBeforeNextEmit: false;
+        FPS: number;
+    };
 
     public constructor() {
-        this.emitTime = 3000;
-        this.waitTime = 1000;
-        this.lastTime = Date.now();
+        this.config = {
+            emitTime: 3000,
+            waitTime: 1000,
+            resetBeforeNextEmit: false,
+            FPS: 60,
+        };
+        this.lastTime = performance.now();
         this.splats = [];
         this.splatsCounter = 0;
         this.resetCounter = 0;
-        this.resetBeforeNextEmit = false;
 
         this.tweenRunner = new TweenRunner();
         this.fluid = new Fluid(this);
@@ -68,69 +75,106 @@ export class Game {
 
     private addSplatFolder(splat: ISplat) {
         this.splatsCounter++;
-        const folder = this.gui.addFolder("Splat " + this.splatsCounter);
-        folder.add(splat, "x");
-        folder.add(splat, "y");
-        folder.add(splat, "dx", -300, 300);
-        folder.add(splat, "dy", -300, 300);
-        folder.add(splat, "emitTime", 0, 1);
-        folder.addColor(splat, "color", 1);
-
+        const xShift = window.innerWidth / 2;
+        const yShift = window.innerHeight / 2;
         const settings = {
-            remove: () => {
-                this.splats = this.splats.filter(el => el !== splat);
-                this.reset();
-                folder.destroy();
-            },
+            Color: { r: splat.color[0] * 255, g: splat.color[1] * 255, b: splat.color[2] * 255 },
+            Position: { x: splat.x - xShift, y: splat.y - yShift },
+            Strength: { x: splat.dx, y: splat.dy },
         };
 
-        folder.add(settings, "remove");
+        const folder = this.gui.addFolder({ title: "Splat " + this.splatsCounter });
+        folder
+            .addInput(settings, "Position", {
+                x: { min: -xShift, max: xShift },
+                y: { min: -yShift, max: yShift },
+            })
+            .on("change", () => {
+                splat.x = settings.Position.x + xShift;
+                splat.y = settings.Position.y + yShift;
+            });
+
+        folder
+            .addInput(settings, "Strength", {
+                x: { min: -500, max: 500 },
+                y: { min: -500, max: 500 },
+            })
+            .on("change", () => {
+                splat.dx = settings.Strength.x;
+                splat.dy = settings.Strength.y;
+            });
+        folder.addInput(splat, "emitTime", { min: 0, max: 1, title: "Emit time" });
+        folder.addInput(settings, "Color", { view: "color" }).on("change", () => {
+            splat.color[0] = settings.Color.r / 255;
+            splat.color[1] = settings.Color.g / 255;
+            splat.color[2] = settings.Color.b / 255;
+        });
+        folder.addButton({ title: "Remove splat" }).on("click", () => {
+            this.splats = this.splats.filter(el => el !== splat);
+            folder.dispose();
+            this.reset();
+        });
     }
 
-    private reset = (): void => {
+    private reset(): void {
         this.resetCounter++;
         this.fluid.reset();
         this.runSplats();
-    };
+    }
 
     private async runSplats(): Promise<void> {
-        if (this.resetBeforeNextEmit) {
-            this.reset();
+        if (this.config.resetBeforeNextEmit) {
+            this.resetCounter++;
+            this.fluid.reset();
         }
         const currentResetCounter = this.resetCounter;
-        await this.fluid.emitSplats(this.splats, this.emitTime, this.waitTime);
+        await this.fluid.emitSplats(this.splats, this.config.emitTime, this.config.waitTime);
         if (currentResetCounter === this.resetCounter) {
             this.runSplats();
         }
     }
 
     private update = (): void => {
-        const now = Date.now();
-        const delatMS = Math.min(now - this.lastTime, 16);
+        this.fpsGraph.begin();
+        const now = performance.now();
+        const delatMS = Math.min(16, now - this.lastTime);
         const dt = delatMS / 1000;
+        this.config.FPS = Math.round(1000 / delatMS);
         this.tweenRunner.timestep(delatMS);
         this.lastTime = now;
         this.fluid.timestep(dt);
 
+        this.fpsGraph.end();
         requestAnimationFrame(this.update);
     };
 
-    private makeGUI(): GUI {
-        const gui = new GUI();
+    private makeGUI(): Pane {
+        const gui = new Pane({ expanded: true });
+        gui.registerPlugin(EssentialsPlugin);
+
+        const settings = gui.addFolder({ title: "Settings" });
+        gui.addButton({ title: "Add splat" }).on("click", () => this.addSplat());
+
         const config = this.fluid.config;
-        gui.add(config, "densityDissipation", 0.8, 1.1);
-        gui.add(config, "velocityDissipation", 0.8, 1.1);
-        gui.add(config, "pressureDissipation", 0, 1.1);
-        gui.add(config, "pressureIterations", 0, 50);
-        gui.add(config, "curl", 0, 50);
-        gui.add(config, "splatRadius", 0.0001, 0.02);
-        gui.add(this, "emitTime", 0, 5000);
-        gui.add(this, "waitTime", 0, 5000);
-        gui.add(this, "resetBeforeNextEmit");
-        gui.add(this, "reset");
-        gui.add(this, "addSplat");
-        gui.add(this, "save");
-        gui.add(this, "load");
+        this.fpsGraph = settings.addBlade({
+            view: "fpsgraph",
+            label: "Performance",
+            lineCount: 2,
+            min: 0,
+            max: 200,
+        }) as EssentialsPlugin.FpsGraphBladeApi;
+        settings.addInput(config, "densityDissipation", { min: 0.9, max: 1, label: "Dissipation" });
+        settings.addInput(config, "velocityDissipation", { min: 0.9, max: 1, label: "Velocity" });
+        settings.addInput(config, "pressureDissipation", { min: 0, max: 1, label: "Pressure" });
+        settings.addInput(config, "pressureIterations", { min: 0, max: 50, label: "Pressure iterations", step: 1 });
+        settings.addInput(config, "curl", { min: 0, max: 50, label: "Curl" });
+        settings.addInput(config, "splatRadius", { min: 0.0001, max: 0.02, label: "Splat radius" });
+        settings.addInput(this.config, "emitTime", { min: 0, max: 5000, label: "Emit time", step: 10 });
+        settings.addInput(this.config, "waitTime", { min: 0, max: 5000, label: "Wait time", step: 10 });
+        settings.addInput(this.config, "resetBeforeNextEmit", { label: "Reset before next emit" });
+        settings.addButton({ title: "Reset" }).on("click", () => this.reset());
+        settings.addButton({ title: "Save" }).on("click", () => this.save());
+        settings.addButton({ title: "Load" }).on("click", () => this.load());
         return gui;
     }
 
@@ -138,9 +182,9 @@ export class Game {
         const data = {
             config: this.fluid.config,
             splats: this.splats,
-            emitTime: this.emitTime,
-            waitTime: this.waitTime,
-            resetBeforeNextEmit: this.resetBeforeNextEmit,
+            emitTime: this.config.emitTime,
+            waitTime: this.config.waitTime,
+            resetBeforeNextEmit: this.config.resetBeforeNextEmit,
         };
 
         const anchor = document.createElement("a");
@@ -164,12 +208,12 @@ export class Game {
                     const data = JSON.parse(json);
                     this.splats = data.splats;
                     Object.assign(this.fluid.config, data.config);
-                    this.emitTime = data.emitTime;
-                    this.waitTime = data.waitTime;
+                    this.config.emitTime = data.emitTime;
+                    this.config.waitTime = data.waitTime;
                     this.resetCounter = 0;
                     this.splatsCounter = 0;
-                    this.resetBeforeNextEmit = data.resetBeforeNextEmit;
-                    this.gui.destroy();
+                    this.config.resetBeforeNextEmit = data.resetBeforeNextEmit;
+                    this.gui.dispose();
                     this.gui = this.makeGUI();
                     this.splats.forEach(splat => this.addSplatFolder(splat));
                     this.reset();
